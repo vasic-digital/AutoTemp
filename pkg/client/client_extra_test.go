@@ -12,8 +12,7 @@ import (
 
 // TestRunSinglePointGrid — a 1-element temperature grid is legal and returns it.
 func TestRunSinglePointGrid(t *testing.T) {
-	c, err := New()
-	require.NoError(t, err)
+	c := newTestClient(t)
 	defer c.Close()
 
 	res, err := c.Run(context.Background(), types.RunOptions{
@@ -26,8 +25,7 @@ func TestRunSinglePointGrid(t *testing.T) {
 
 // TestRunDefaultGridWinsMid — empty Temperatures yields the built-in default grid.
 func TestRunDefaultGridWinsMid(t *testing.T) {
-	c, err := New()
-	require.NoError(t, err)
+	c := newTestClient(t)
 	defer c.Close()
 
 	res, err := c.Run(context.Background(), types.RunOptions{Prompt: "hi"})
@@ -39,46 +37,42 @@ func TestRunDefaultGridWinsMid(t *testing.T) {
 
 // TestRunInvalidPromptReturnsError — empty prompt path.
 func TestRunInvalidPromptReturnsError(t *testing.T) {
-	c, err := New()
-	require.NoError(t, err)
+	c := newTestClient(t)
 	defer c.Close()
 
-	_, err = c.Run(context.Background(), types.RunOptions{Prompt: "   "})
+	_, err := c.Run(context.Background(), types.RunOptions{Prompt: "   "})
 	assert.Error(t, err)
 }
 
 // TestRunRunnerErrorPropagates — a runner that errors surfaces a wrapped error.
 func TestRunRunnerErrorPropagates(t *testing.T) {
-	c, err := New()
-	require.NoError(t, err)
+	c := newTestClient(t)
 	defer c.Close()
 
-	c.SetRunner(func(ctx context.Context, prompt string, t, topP float64) (string, types.TokenUsage, error) {
+	c.SetRunner(func(_ context.Context, _ string, _, _ float64) (string, types.TokenUsage, error) {
 		return "", types.TokenUsage{}, errors.New("boom")
 	})
-	_, err = c.Run(context.Background(), types.RunOptions{Prompt: "p"})
+	_, err := c.Run(context.Background(), types.RunOptions{Prompt: "p"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "runner failed")
 }
 
 // TestEvaluateJudgeErrorPropagates — judge error must bubble.
 func TestEvaluateJudgeErrorPropagates(t *testing.T) {
-	c, err := New()
-	require.NoError(t, err)
+	c := newTestClient(t)
 	defer c.Close()
 
-	c.SetJudges(func(ctx context.Context, prompt, output string) (types.ScoreBreakdown, error) {
+	c.SetJudges(func(_ context.Context, _, _ string) (types.ScoreBreakdown, error) {
 		return types.ScoreBreakdown{}, errors.New("judge exploded")
 	})
-	_, err = c.Evaluate(context.Background(), types.EvaluateOptions{Prompt: "p", Output: "o"})
+	_, err := c.Evaluate(context.Background(), types.EvaluateOptions{Prompt: "p", Output: "o"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "judge failed")
 }
 
 // TestEvaluateMultiJudgeAverage — multiple judges produce averaged results.
 func TestEvaluateMultiJudgeAverage(t *testing.T) {
-	c, err := New()
-	require.NoError(t, err)
+	c := newTestClient(t)
 	defer c.Close()
 
 	c.SetJudges(
@@ -96,8 +90,7 @@ func TestEvaluateMultiJudgeAverage(t *testing.T) {
 
 // TestSetRunnerNilIgnored — passing nil runner must be a no-op.
 func TestSetRunnerNilIgnored(t *testing.T) {
-	c, err := New()
-	require.NoError(t, err)
+	c := newTestClient(t)
 	defer c.Close()
 	c.SetRunner(nil)
 	// Baseline runner should still work.
@@ -108,8 +101,7 @@ func TestSetRunnerNilIgnored(t *testing.T) {
 
 // TestSetJudgesEmptyIgnored — passing no judges must be a no-op.
 func TestSetJudgesEmptyIgnored(t *testing.T) {
-	c, err := New()
-	require.NoError(t, err)
+	c := newTestClient(t)
 	defer c.Close()
 	c.SetJudges()
 	res, err := c.Evaluate(context.Background(), types.EvaluateOptions{Prompt: "p", Output: "o"})
@@ -119,8 +111,7 @@ func TestSetJudgesEmptyIgnored(t *testing.T) {
 
 // TestRunAdvancedDefaultRoundsOne — 0 rounds coerces to 1.
 func TestRunAdvancedDefaultRoundsOne(t *testing.T) {
-	c, err := New()
-	require.NoError(t, err)
+	c := newTestClient(t)
 	defer c.Close()
 
 	res, err := c.RunAdvanced(context.Background(), types.AdvancedOptions{
@@ -133,8 +124,7 @@ func TestRunAdvancedDefaultRoundsOne(t *testing.T) {
 
 // TestBenchmarkEmptyDataset — empty dataset should not error; produces a model result with NumItems=0.
 func TestBenchmarkEmptyDataset(t *testing.T) {
-	c, err := New()
-	require.NoError(t, err)
+	c := newTestClient(t)
 	defer c.Close()
 
 	res, err := c.Benchmark(context.Background(), types.BenchmarkOptions{
@@ -147,11 +137,10 @@ func TestBenchmarkEmptyDataset(t *testing.T) {
 
 // TestBenchmarkInvalidItemPropagates — a malformed dataset item triggers a wrapped InvalidArgument.
 func TestBenchmarkInvalidItemPropagates(t *testing.T) {
-	c, err := New()
-	require.NoError(t, err)
+	c := newTestClient(t)
 	defer c.Close()
 
-	_, err = c.Benchmark(context.Background(), types.BenchmarkOptions{
+	_, err := c.Benchmark(context.Background(), types.BenchmarkOptions{
 		Dataset: []types.BenchmarkItem{{Prompt: ""}},
 	})
 	assert.Error(t, err)
@@ -159,8 +148,7 @@ func TestBenchmarkInvalidItemPropagates(t *testing.T) {
 
 // TestRunnerTokenUsageAccumulation — grid search must sum token usages.
 func TestRunnerTokenUsageAccumulation(t *testing.T) {
-	c, err := New()
-	require.NoError(t, err)
+	c := newTestClient(t)
 	defer c.Close()
 
 	calls := 0

@@ -279,21 +279,29 @@ func (c *Client) Benchmark(ctx context.Context, opts BenchmarkOptions) (*Benchma
 
 // --- baselines ---
 
-// baselineRunner is a deterministic stand-in used when no production LLM
-// runner has been injected. It echoes the prompt with a temperature-band
-// tag so that baselineJudge can produce a temperature-sensitive score.
-func baselineRunner(_ context.Context, prompt string, temperature, _ float64) (string, TokenUsage, error) {
-	band := "mid"
-	switch {
-	case temperature < 0.3:
-		band = "low"
-	case temperature > 0.8:
-		band = "high"
-	}
-	out := fmt.Sprintf("[%s] %s", band, prompt)
-	u := TokenUsage{PromptTokens: len(prompt), CompletionTokens: len(out), TotalTokens: len(prompt) + len(out)}
-	return out, u, nil
+// baselineRunner previously echoed the prompt with a temperature-band
+// tag — a deterministic stand-in installed as the default Runner on
+// New(). Per round-23 §11.4 audit (2026-05-18), any caller forgetting
+// to call SetRunner before invoking Run received fabricated responses
+// scored by the judge, producing MEANINGLESS benchmark data with no
+// error surfaced — CRITICAL PASS-bluff at the library-default layer.
+//
+// Fix: baselineRunner now returns ErrBaselineRunnerNotConfigured.
+// Callers MUST inject a real LLM-dispatching Runner via SetRunner
+// before invoking Run / RunAdvanced / Evaluate / Benchmark.
+// Tests that need a deterministic stand-in MUST provide their own
+// echo runner via SetRunner — the default is no longer a silent echo.
+func baselineRunner(_ context.Context, prompt string, _, _ float64) (string, TokenUsage, error) {
+	_ = prompt
+	return "", TokenUsage{}, ErrBaselineRunnerNotConfigured
 }
+
+// ErrBaselineRunnerNotConfigured is returned when AutoTemp's Run /
+// RunAdvanced / Evaluate / Benchmark is invoked without a real LLM
+// Runner injected via SetRunner. The previous baselineRunner default
+// echoed the prompt and returned success, producing fabricated
+// benchmark data — §11.4 PASS-bluff at the library-default layer.
+var ErrBaselineRunnerNotConfigured = fmt.Errorf("autotemp: baseline Runner has not been replaced — call client.SetRunner(...) with a real LLM-dispatching runner before invoking Run (the previous echo-back default produced meaningless benchmark data; §11.4 PASS-bluff removed)")
 
 // baselineJudge favours mid-temperature outputs so that grid search in
 // tests converges to a predictable winner when used with baselineRunner.

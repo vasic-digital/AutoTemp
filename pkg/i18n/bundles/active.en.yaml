@@ -1,0 +1,37 @@
+# AutoTemp i18n bundle — English (default).
+#
+# Keys are prefixed `autotemp_` to avoid collision with sibling
+# submodule catalogues that a consuming project (e.g. HelixCode,
+# HelixAgent) may merge into a single bundle store. Per CONST-046 the
+# consuming project's project-side translator is the authority that
+# fans out locale overrides; this bundle is the canonical English
+# source.
+#
+# Round-132 §11.4 — kickoff scope: programmatic-message companion keys
+# for AutoTemp's Run/RunAdvanced/Benchmark summary lines plus error
+# wrapper diagnostics. AutoTemp itself surfaces these strings as
+# wrapped errors and result-struct summaries consumed by other Go
+# packages — not displayed directly to end users. The companion keys
+# below let consuming projects (UI dashboards, CLI agents, mobile
+# clients) render the same semantic events with locale awareness when
+# AutoTemp's output reaches a human surface.
+#
+# Existing programmatic contracts (errors.Wrap codes, sentinel error
+# variables, Summary string format) stay verbatim for backward
+# compatibility and protocol stability; this bundle is purely additive
+# infrastructure for future consumer-side translation.
+
+# Result summary keys
+autotemp_run_summary: "best temp {{temperature}} with score {{score}} over {{candidates}} candidates"
+autotemp_advanced_summary: "advanced: best temp {{temperature}} across {{rounds}} rounds"
+autotemp_benchmark_summary: "benchmark: {{models}} models, {{items}} items"
+
+# Error wrapper keys
+autotemp_err_invalid_configuration: "invalid configuration"
+autotemp_err_invalid_parameters: "invalid parameters"
+autotemp_err_invalid_dataset_item: "invalid dataset item"
+autotemp_err_runner_failed: "runner failed"
+autotemp_err_judge_failed: "judge failed"
+autotemp_err_baseline_runner_not_configured: "baseline runner has not been replaced — call SetRunner with a real LLM-dispatching runner before invoking Run"
+autotemp_err_prompt_required: "prompt is required"
+autotemp_err_model_name_required: "model name is required"
